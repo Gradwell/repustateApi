@@ -10,9 +10,9 @@
     This is a simple PHP client for repustate.com's API for semantic analysis. Originally built for the 'Beyond Frameworks' tutorial blog posts.
   </description>
   <lead>
-    <name>Your name</name>
-    <user>Anything goes here</user>
-    <email>Your email address</email>
+    <name>Stuart Herbert</name>
+    <user>stuartherbert</user>
+    <email>stuart.herbert@gradwell.com</email>
     <active>yes</active>
   </lead>
   <date>${build.date}</date>
