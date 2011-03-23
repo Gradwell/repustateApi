@@ -4,10 +4,10 @@
     http://pear.php.net/dtd/package-2.0
     http://pear.php.net/dtd/package-2.0.xsd">
   <name>${project.name}</name>
-  <channel>Your PEAR server</channel>
-  <summary>Summary goes here</summary>
+  <channel>pear.gradwell.com</channel>
+  <summary>Simple PHP client for repustate's API</summary>
   <description>
-    Description goes here
+    This is a simple PHP client for repustate.com's API for semantic analysis. Originally built for the 'Beyond Frameworks' tutorial blog posts.
   </description>
   <lead>
     <name>Your name</name>
