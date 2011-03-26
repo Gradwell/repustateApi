@@ -48,6 +48,12 @@ ${contents}
         <min>2.0.0</min>
 	      <max>2.999.9999</max>
       </package>
+      <package>
+        <name>HTTP_Request2</name>
+        <channel>pear.php.net</channel>
+        <min>2.0.0beta1</min>
+        <max>2.999.9999</max>
+      </package>
     </required>
   </dependencies>
   <phprelease />
