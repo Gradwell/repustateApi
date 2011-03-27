@@ -56,7 +56,7 @@ class ClientTest extends \PHPUnit_Framework_TestCase
 
                 if (false === $apiKey)
                 {
-                        die('Please set the REPUSTATE_KEY environment variable');
+                        die('Please set the REPUSTATE_KEY environment variable. See README.md for details.');
                 }
 
                 $this->_apiKey = $apiKey;
@@ -78,7 +78,7 @@ class ClientTest extends \PHPUnit_Framework_TestCase
                 $text = "this is a happy piece of text";
 
                 // do the test
-                $score = $client->callScoreForText($text, 'json');
+                $score = $client->callScoreForText($text);
 
                 // evaluate result here
                 $this->assertTrue ($score !== false);
@@ -91,9 +91,236 @@ class ClientTest extends \PHPUnit_Framework_TestCase
                 $url = "http://www.stuartherbert.com";
 
                 // do the test
-                $score = $client->callScoreForUrl($url, 'json');
+                $score = $client->callScoreForUrl($url);
 
                 //evaluate result here
                 $this->assertTrue ($score !== false);
+        }
+
+        public function testCannotUseANonStringAsApiKey()
+        {
+                // setup
+                $rubbishKey = 100;
+                $caughtException = false;
+
+                // do the test
+                try
+                {
+                        $client = new Client($rubbishKey);
+                }
+                catch (\Exception $e)
+                {
+                        $caughtException = true;
+                }
+
+                // test the results
+                $this->assertTrue($caughtException);
+        }
+
+        public function testCannotUseWrongLengthStringAsApiKey()
+        {
+                // setup
+                $rubbishKey = 'this string is too short';
+                $caughtException = false;
+
+                // do the test
+                try
+                {
+                        $client = new Client($rubbishKey);
+                }
+                catch (\Exception $e)
+                {
+                        $caughtException = true;
+                }
+
+                // test the results
+                $this->assertTrue($caughtException);
+        }
+
+        public function testCannotUseNullTextForScoring()
+        {
+                // setup
+                $client = new Client($this->_apiKey);
+                $text = null;
+                $caughtException = false;
+
+                // do the test
+                try
+                {
+                        $score = $client->callScoreForText($text);
+                }
+                catch (\Exception $e)
+                {
+                        $caughtException = true;
+                }
+
+                // evaluate result here
+                $this->assertTrue ($caughtException);
+        }
+
+        public function testCannotUseNullUrlForScoring()
+        {
+                // setup
+                $client = new Client($this->_apiKey);
+                $url = null;
+                $caughtException = false;
+
+                // do the test
+                try
+                {
+                        $score = $client->callScoreForUrl($url);
+                }
+                catch (\Exception $e)
+                {
+                        $caughtException = true;
+                }
+
+                // evaluate result here
+                $this->assertTrue ($caughtException);
+        }
+
+        public function testCanExtractScoresForBulkText()
+        {
+                // setup
+                // text is from Stuart Herbert's blog
+                $textToScore = array (
+                        'extract1' => "Many old-skool developers choose to work largely from the command-line. You can happily run PHPUnit by hand from the command line yourself each time, but if you’re taking advantage of the extra data that PHPUnit can report back on, that soon gets to be a lot of typing! This is where the build.xml file in our skeleton comes in handy …",
+                        'extract2' => "If the command-line isn’t for you, don’t worry … the component skeleton is also designed to make it very easy to run your unit tests from inside Netbeans. I’m assuming that it will be just as easy to do this from other IDEs that support PHPUnit, but I haven’t tested any myself.",
+                );
+
+                // do the test
+                $client = new Client($this->_apiKey);
+                $scores = $client->callBulkScore($textToScore);
+
+                // evalute the results
+                $this->assertTrue(isset($scores['extract1']));
+                $this->assertTrue(isset($scores['extract2']));
+        }
+
+        public function testCanFindSentimentProbabilityForTerm()
+        {
+                // setup
+                $searchTerm = 'Stuart Herbert';
+
+                // do the test
+                $client = new Client($this->_apiKey);
+                $score = $client->callSentimentProbability($searchTerm);
+
+                // evaluate the results
+                $this->assertTrue(is_float($score));
+        }
+
+        public function testCanSearchForSentimentForTerm()
+        {
+                // setup
+                $searchTerm = 'Stuart Herbert';
+
+                // do the test
+                $client = new Client($this->_apiKey);
+                $results = $client->callSearchForSentimentAbout($searchTerm);
+
+                // evaluate the results
+                //
+                // we can make sure that the results are internally
+                // consistent
+                $this->assertTrue(isset($results['number_of_results']));
+                $this->assertTrue(isset($results['results']));
+                $this->assertEquals($results['number_of_results'], count($results['results']));
+        }
+
+        public function testCanSearchForTypeOfSentimentForTerm()
+        {
+                // setup
+                $searchTerm = 'Stuart Herbert';
+
+                // do the test
+                $client = new Client($this->_apiKey);
+                $results = $client->callSearchForSentimentAbout($searchTerm, 'pos');
+
+                // evaluate the results
+                //
+                // we can make sure that the results are internally
+                // consistent
+                $this->assertTrue(isset($results['number_of_results']));
+                $this->assertTrue(isset($results['results']));
+                $this->assertEquals($results['number_of_results'], count($results['results']));
+        }
+
+        public function testCanSearchForPagesOfSentimentForTerm()
+        {
+                // setup
+                $searchTerm = 'Microsoft';
+
+                // do the test
+                $client = new Client($this->_apiKey);
+                $results1 = $client->callSearchForSentimentAbout($searchTerm, null);
+                $results2 = $client->callSearchForSentimentAbout($searchTerm, null, 2);
+
+                // evaluate the results
+                //
+                // we can make sure that the results are internally
+                // consistent
+                $this->assertTrue(isset($results1['number_of_results']));
+                $this->assertTrue(isset($results1['results']));
+                $this->assertEquals($results1['number_of_results'], count($results1['results']));
+                $this->assertTrue(isset($results2['number_of_results']));
+                $this->assertTrue(isset($results2['results']));
+                $this->assertEquals($results2['number_of_results'], count($results2['results']));
+
+                $this->assertNotSame($results1, $results2);
+        }
+
+        public function testCanSearchForAdjectivesAboutTerm()
+        {
+                // setup
+                $searchTerm = 'Microsoft';
+
+                // do the test
+                $client = new Client($this->_apiKey);
+                $results = $client->callExtractAdjectivesFromNet($searchTerm);
+
+                // evaluate the results
+                $this->assertTrue(count($results) > 0);
+                
+        }
+
+        public function testCanSearchForAdjectivesWithSentimentAboutTerm()
+        {
+                // setup
+                $searchTerm = 'Microsoft';
+
+                // do the test
+                $client = new Client($this->_apiKey);
+                $results = $client->callExtractAdjectivesFromNet($searchTerm, 'pos');
+
+                // evaluate the results
+                $this->assertTrue(count($results) > 0);
+        }
+
+        public function testCanSearchForAdjectivesFromText()
+        {
+                // setup
+                // text is from Stuart Herbert's blog
+                $textToScore = "Many old-skool developers choose to work largely from the command-line. You can happily run PHPUnit by hand from the command line yourself each time, but if you’re taking advantage of the extra data that PHPUnit can report back on, that soon gets to be a lot of typing! This is where the build.xml file in our skeleton comes in handy …";
+
+                // do the test
+                $client = new Client($this->_apiKey);
+                $results = $client->callExtractAdjectivesFromText($textToScore);
+
+                // evaluate the results
+                $this->assertTrue(count($results) > 0);
+        }
+
+        public function testCanSearchForAdjectivesFromUrl()
+        {
+                // setup
+                $url = 'http://www.stuartherbert.com';
+
+                // do the test
+                $client = new Client($this->_apiKey);
+                $results = $client->callExtractAdjectivesFromUrl($url);
+
+                // evaluate the results
+                $this->assertTrue(count($results) > 0);
         }
 }

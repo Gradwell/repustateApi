@@ -67,12 +67,27 @@ class Client
 
         /**
          * Validate the API key as best we can, to spot obvious mistakes
+         * Throws an exception if the key is invalid
          *
          * @param string $apiKey
          */
         protected function validateApiKey($apiKey)
         {
-                // @TODO
+                // there is no upstream way to validate a key
+                // so this will have to do
+
+                if (!is_string($apiKey))
+                {
+                        throw new \Exception("API key '$apiKey' is not a valid string");
+                }
+
+                $expectedLength = 40;
+                if (strlen($apiKey) !== $expectedLength)
+                {
+                        throw new \Exception("API key '$apiKey' is the wrong length; expected $expectedLength, got " . strlen($apiKey));
+                }
+
+                // if we get here, then we are as happy as we can be with the key
         }
 
         /**
@@ -82,23 +97,17 @@ class Client
          * If the API call fails, an exception will be thrown.
          *
          * @param string $text
-         * @return int
+         * @return float
          */
         public function callScoreForText($text)
         {
                 // make the API call
+                // if anything goes wrong, genericApiJsonCall will throw
+                // an exception
                 $result = $this->genericApiJsonCall('score', null, array('text' => $text));
 
-                // decode the result
-                // if an error occurred, an exception will have already
-                // been thrown
-
-                if (!isset($result['score']))
-                {
-                        // something went wrong
-                        throw new \Exception("expected field 'score' missing from result");
-                }
-                return $result['score'];
+                // return the score
+                return (float)$result['score'];
         }
 
         /**
@@ -108,24 +117,174 @@ class Client
          * If the API call fails, an exception will be thrown.
          *
          * @param string $url
-         * @return int
+         * @return float
          */
         public function callScoreForUrl($url)
         {
                 // make the API call
+                // if anything goes wrong, genericApiJsonCall will throw
+                // an exception
                 $result = $this->genericApiJsonCall('score', null, array('url' => $url));
 
-                // decode the result
-                // if an error occurred, an exception will have already
-                // been thrown
+                // return the score
+                return (float)$result['score'];
+        }
 
-                if (!isset($result['score']))
+        /**
+         * Score two or more sets of text with a single API call
+         *
+         * If the API call fails, an exception will be thrown
+         *
+         * @param array $textToScore
+         * @return array
+         */
+        public function callBulkScore($textToScore)
+        {
+                // build up the parameters for this call
+                $postParams = array();
+                $tracker    = array();
+
+                $i = 1;
+                foreach ($textToScore as $key => $text)
                 {
-                        // something went wrong
-                        throw new \Exception("expected field 'score' missing from result");
+                        $postParams['text' . $i] = $text;
+                        $tracker[$i] = $key;
+                        $i++;
                 }
 
-                return $result['score'];
+                // make the API call
+                // if anything goes wrong, genericApiJsonCall will throw
+                // an exception
+                $result = $this->genericApiJsonCall('bulk-score', null, $postParams);
+
+                // return the scores
+                $return = array();
+                foreach ($result['results'] as $score)
+                {
+                        $id = $tracker[$score['id']];
+                        $return[$id] = (float)$score['score'];
+                }
+
+                return $return;
+        }
+
+        /**
+         * What is the sentiment for a given search term?
+         *
+         * If the API call fails, an exception will be thrown
+         *
+         * @param string $searchTerm
+         * @return float
+         */
+        public function callSentimentProbability($searchTerm)
+        {
+                // make the API call
+                // if anything goes wrong, genericApiJsonCall will throw
+                // an exception
+                $result = $this->genericApiJsonCall('prob', array('q' => $searchTerm));
+
+                // return the result
+                return (float)$result['score'];
+        }
+
+        /**
+         * Search the net for the sentiment about a search term
+         *
+         * @param string $searchTerm
+         * @param string $sentiment filter the results (one of: pos, neg or neu)
+         * @param int $page which page of results do you want?
+         * @param int $rpp how many results per page to return
+         * @return array
+         */
+        public function callSearchForSentimentAbout($searchTerm, $sentiment = null, $page = null, $rpp = 100)
+        {
+                // build up the list of parameters
+                $urlParams['q'] = $searchTerm;
+
+                if (isset($sentiment))
+                {
+                        $urlParams['sentiment'] = $sentiment;
+                }
+
+                if (isset($page))
+                {
+                        $urlParams['page'] = $page;
+                }
+
+                if (isset($rpp))
+                {
+                        $urlParams['rpp'] = $rpp;
+                }
+
+                // make the API call
+                // if anything goes wrong, genericApiJsonCall will throw
+                // an exception
+                $result = $this->genericApiJsonCall('search', $urlParams);
+
+                // return the result
+                return $result;
+        }
+
+        /**
+         * Extract the adjectives being used to describe a search term online
+         *
+         * @param string $searchTerm the term to search for
+         * @param string $sentiment filter the results; one of: pos, neg, neu
+         * @return array
+         */
+        public function callExtractAdjectivesFromNet($searchTerm, $sentiment = null)
+        {
+                $urlParams = array('q' => $searchTerm, 'cloud' => 1);
+                if (isset($sentiment))
+                {
+                        $urlParams['sentiment'] = $sentiment;
+                }
+
+                // make the API call
+                // if anything goes wrong, genericApiJsonCall will throw
+                // an exception
+                $result = $this->genericApiJsonCall('adj', $urlParams);
+
+                // return the results
+                return $result['results'];
+        }
+
+        /**
+         * Extract the adjectives from a piece of text
+         *
+         * @param string $text the text to analyse
+         * @return array
+         */
+        public function callExtractAdjectivesFromText($text)
+        {
+                $postParams['text'] = $text;
+
+                // make the API call
+                // if anything goes wrong, genericApiJsonCall will throw
+                // an exception
+                $result = $this->genericApiJsonCall('adj', null, $postParams);
+
+                // return the results
+                return $result['results'];
+        }
+
+        /**
+         * Extract the adjectives from content published at a URL
+         *
+         * @param string $url URL to find the content from
+         * @return array
+         */
+        public function callExtractAdjectivesFromUrl($url)
+        {
+                $urlParams['url'] = $url;
+
+                // make the API call
+                // if anything goes wrong, genericApiJsonCall will throw
+                // an exception
+                $result = $this->genericApiJsonCall('adj', $urlParams);
+
+                // return the results
+                return $result['results'];
         }
 
         /**
@@ -143,8 +302,24 @@ class Client
                 $url = $this->buildApiUrl($apiCall, $urlParams, 'json');
 
                 // step 2: make the call
-                $jsonResult = null;
-                $result = json_decode($jsonResult);
+                if ($postParams == null)
+                {
+                        $client = new \HTTP_Request2($url, \HTTP_Request2::METHOD_GET);
+                }
+                else
+                {
+                        $client = new \HTTP_Request2($url, \HTTP_Request2::METHOD_POST);
+                        foreach ($postParams as $name => $value)
+                        {
+                                $client->addPostParameter($name, $value);
+                        }
+                }
+
+                // var_dump($url);
+                $jsonResult = $client->send()->getBody();
+                // var_dump($jsonResult);
+                $result = json_decode($jsonResult, true);
+                var_dump($result);
 
                 // step 3: was there an error at all?
                 // if there was, this method will throw a suitable exception
@@ -166,7 +341,7 @@ class Client
         public function buildApiUrl($apiCall, $params, $format)
         {
                 // build the initial URL
-                $url = 'http://api.repustate.com/v1'
+                $url = 'http://api.repustate.com/v1/'
                      . $this->apiKey
                      . '/'
                      . $apiCall
@@ -187,7 +362,7 @@ class Client
                                 }
                                 $append = true;
 
-                                $url = urlencode($name) . '=' . urlencode($value);
+                                $url .= urlencode($name) . '=' . urlencode($value);
                         }
                 }
 
@@ -205,8 +380,24 @@ class Client
                 if (!isset($result['status']))
                 {
                         // uh oh - something went wrong at their end
-                        //throw new \Gradwell\HTTP\E_500InternalServerError("no status field returned from API call to '" . $apiUrl . "'");
-                        throw new \Exception('oh dear');
+                        //
+                        // not every API call returns a 'status' field
+                        // so we need to cope with that until that changes
+
+                        if (!isset($result['errors']))
+                        {
+                                // no errors reported
+                                // assume the call worked
+                                //
+                                // I am sure this will bite us on the ass
+                                // one day, but am not sure how we could
+                                // handle this better right now
+                                return;
+                        }
+
+                        // @codeCoverageIgnoreStart
+                        throw new \Exception('API result contains no status at all; something seriously went wrong');
+                        // @codeCoverageIgnoreEnd
                 }
 
                 // we do :)
@@ -221,5 +412,24 @@ class Client
 
                 // if we get here, then our API call failed
                 // the main question is ... why?
+
+                if (!isset($result['errors']))
+                {
+                        // we will never know
+                        //
+                        // @codeCoverageIgnoreStart
+                        throw new \Exception('API call failed, but result does not include error information');
+                        // @codeCoverageIgnoreEnd
+                }
+
+                // we have error information
+                $message = 'API call failed; error(s): ';
+
+                foreach ($result['errors'] as $error)
+                {
+                        $message .= 'field ' . $error['field'] . ' ' . $error['message'] . ';';
+                }
+
+                throw new \Exception($message);
         }
 }
